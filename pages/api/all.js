@@ -1,10 +1,12 @@
 import { applications } from "./create";
 
 export default function handler(req, res) {
-  const all = Object.entries(applications).map(([id, data]) => ({
-    id,
-    responses: data.responses,
-    questions: data.questions
-  }));
+  const all = Object.entries(applications).flatMap(([id, data]) =>
+    data.responses.map(r => ({
+      id,
+      username: r.username,
+      answers: r.answers
+    }))
+  );
   res.status(200).json(all);
 }
