@@ -9,12 +9,13 @@ export default function Apply() {
   const [username, setUsername] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     if (id) {
       fetch(`/api/get?id=${id}`)
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           if (data.error) setError(data.error);
           else setApplication(data);
         })
@@ -22,11 +23,25 @@ export default function Apply() {
     }
   }, [id]);
 
-  const submit = async () => {
-    if (!username.trim()) {
-      alert("Please enter your username.");
-      return;
+  const validate = () => {
+    const errors = {};
+    if (!username.trim()) errors.username = "Username is required";
+
+    if (application?.questions) {
+      application.questions.forEach((q, i) => {
+        if (q.required && !answers[i]) {
+          errors[`q${i}`] = "This question is required";
+        }
+      });
     }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const submit = async () => {
+    if (!validate()) return;
+
     await fetch("/api/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,9 +50,40 @@ export default function Apply() {
     setSubmitted(true);
   };
 
-  if (error) return <div style={{ color: "red", textAlign: "center", marginTop: 40 }}>{error}</div>;
-  if (!application) return <div style={{ color: "white", textAlign: "center", marginTop: 40 }}>Loading application...</div>;
-  if (submitted) return <p style={{ textAlign: "center", color: "white", marginTop: 40 }}>Application submitted!</p>;
+  if (error)
+    return (
+      <div
+        style={{
+          color: "red",
+          textAlign: "center",
+          marginTop: 40,
+          padding: 20,
+        }}
+      >
+        {error}
+      </div>
+    );
+
+  if (!application)
+    return (
+      <div
+        style={{
+          color: "white",
+          textAlign: "center",
+          marginTop: 40,
+          padding: 20,
+        }}
+      >
+        Loading application...
+      </div>
+    );
+
+  if (submitted)
+    return (
+      <p style={{ textAlign: "center", color: "white", marginTop: 40 }}>
+        Application submitted!
+      </p>
+    );
 
   return (
     <div
@@ -57,7 +103,6 @@ export default function Apply() {
           width: "420px",
           padding: 30,
           borderRadius: 12,
-          // Removed background and boxShadow for no white box
           background: "transparent",
           boxShadow: "none",
           textAlign: "center",
@@ -66,22 +111,90 @@ export default function Apply() {
         <h1>{application.title}</h1>
         <p style={{ marginBottom: "20px" }}>{application.description}</p>
 
-        <input
-          placeholder="Your Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          style={inputStyle}
-        />
+        <div style={{ marginBottom: 10, textAlign: "left" }}>
+          <label>
+            Your Username <span style={{ color: "red" }}>*</span>
+          </label>
+          <input
+            placeholder="Your Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={inputStyle}
+          />
+          {validationErrors.username && (
+            <div style={errorStyle}>{validationErrors.username}</div>
+          )}
+        </div>
 
-        {application.questions.map((q, i) => (
-          <div key={i} style={{ textAlign: "left", marginBottom: 15 }}>
-            <label style={{ display: "block", marginBottom: 6 }}>{q}</label>
-            <input
-              onChange={(e) => setAnswers({ ...answers, [i]: e.target.value })}
-              style={inputStyle}
-            />
-          </div>
-        ))}
+        {application.questions.map((q, i) => {
+          // Assume question objects can have type & required, e.g.
+          // { question: "Your name?", type: "short", required: true }
+          // For backward compatibility, if q is a string, treat as short answer and not required
+          const questionText = typeof q === "string" ? q : q.question;
+          const type = typeof q === "string" ? "short" : q.type || "short";
+          const required = typeof q === "string" ? false : q.required || false;
+
+          return (
+            <div
+              key={i}
+              style={{
+                marginBottom: 20,
+                textAlign: "left",
+              }}
+            >
+              <label>
+                {questionText} {required && <span style={{ color: "red" }}>*</span>}
+              </label>
+
+              {type === "multiple-choice" && q.options ? (
+                <select
+                  value={answers[i] || ""}
+                  onChange={(e) =>
+                    setAnswers({
+                      ...answers,
+                      [i]: e.target.value,
+                    })
+                  }
+                  style={inputStyle}
+                >
+                  <option value="">-- Select an option --</option>
+                  {q.options.map((opt, idx) => (
+                    <option key={idx} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : type === "long" ? (
+                <textarea
+                  value={answers[i] || ""}
+                  onChange={(e) =>
+                    setAnswers({
+                      ...answers,
+                      [i]: e.target.value,
+                    })
+                  }
+                  style={{ ...inputStyle, height: 80 }}
+                />
+              ) : (
+                // default short answer
+                <input
+                  value={answers[i] || ""}
+                  onChange={(e) =>
+                    setAnswers({
+                      ...answers,
+                      [i]: e.target.value,
+                    })
+                  }
+                  style={inputStyle}
+                />
+              )}
+
+              {validationErrors[`q${i}`] && (
+                <div style={errorStyle}>{validationErrors[`q${i}`]}</div>
+              )}
+            </div>
+          );
+        })}
 
         <button style={buttonAccent} onClick={submit}>
           Submit Application
@@ -99,7 +212,7 @@ const inputStyle = {
   border: "none",
   background: "#2e2e40",
   color: "white",
-  marginBottom: "10px",
+  marginTop: 5,
 };
 
 const buttonAccent = {
@@ -113,4 +226,11 @@ const buttonAccent = {
   cursor: "pointer",
   fontWeight: "bold",
   fontSize: "16px",
+  marginTop: 15,
+};
+
+const errorStyle = {
+  color: "red",
+  fontSize: "13px",
+  marginTop: 4,
 };
