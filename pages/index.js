@@ -37,24 +37,29 @@ export default function Builder() {
   }, [showSubmissions]);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #2b5876, #4e4376)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "Segoe UI, sans-serif",
-      color: "white",
-      padding: 20
-    }}>
-      <div style={{
-        background: "#1e1e2f",
-        padding: 30,
-        borderRadius: 12,
-        width: "420px",
-        boxShadow: "0 8px 20px rgba(0,0,0,0.5)"
-      }}>
-        <h1 style={{ textAlign: "center", marginBottom: "20px" }}>Create Mod Application</h1>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #2b5876, #4e4376)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Segoe UI, sans-serif",
+        color: "white",
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          width: "420px",
+          padding: 30,
+          borderRadius: 12,
+          background: "transparent", // removed white box
+          boxShadow: "none",
+          textAlign: "center",
+        }}
+      >
+        <h1 style={{ marginBottom: "20px" }}>Create Mod Application</h1>
         <input
           placeholder="Application Title"
           value={title}
@@ -67,21 +72,31 @@ export default function Builder() {
           onChange={(e) => setDescription(e.target.value)}
           style={{ ...inputStyle, height: "80px" }}
         />
-        <h3 style={{ marginTop: "20px" }}>Questions</h3>
-        <ul>{questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+        <h3 style={{ marginTop: "20px", textAlign: "left" }}>Questions</h3>
+        <ul style={{ textAlign: "left" }}>
+          {questions.map((q, i) => (
+            <li key={i}>{q}</li>
+          ))}
+        </ul>
         <input
           placeholder="Add a question"
           value={newQuestion}
           onChange={(e) => setNewQuestion(e.target.value)}
           style={inputStyle}
         />
-        <button style={buttonPrimary} onClick={addQuestion}>Add Question</button>
-        <button style={buttonAccent} onClick={createApplication}>Create Application</button>
+        <button style={buttonPrimary} onClick={addQuestion}>
+          Add Question
+        </button>
+        <button style={buttonAccent} onClick={createApplication}>
+          Create Application
+        </button>
 
         {appLink && (
-          <div style={{ marginTop: "20px", textAlign: "center" }}>
+          <div style={{ marginTop: "20px" }}>
             <p>Share this link:</p>
-            <a href={appLink} style={{ color: "#76e6ff" }}>{appLink}</a>
+            <a href={appLink} style={{ color: "#76e6ff" }}>
+              {appLink}
+            </a>
           </div>
         )}
 
@@ -94,30 +109,38 @@ export default function Builder() {
       </div>
 
       {showSubmissions && (
-        <div style={{
-          position: "fixed",
-          right: 0,
-          top: 0,
-          height: "100%",
-          width: "350px",
-          background: "#2c2c3c",
-          color: "white",
-          padding: "20px",
-          overflowY: "auto",
-          boxShadow: "-2px 0 5px rgba(0,0,0,0.5)"
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            right: 0,
+            top: 0,
+            height: "100%",
+            width: "350px",
+            background: "#2c2c3c",
+            color: "white",
+            padding: "20px",
+            overflowY: "auto",
+            boxShadow: "-2px 0 5px rgba(0,0,0,0.5)",
+          }}
+        >
           <h2>Submissions</h2>
           {submissions.length === 0 ? (
             <p>No submissions yet</p>
           ) : (
             submissions.map((s, i) => (
-              <div key={i} style={{
-                marginBottom: "15px",
-                borderBottom: "1px solid #444",
-                paddingBottom: "10px"
-              }}>
-                <strong>User:</strong> {s.username || "Unknown"}<br />
-                <strong>Application ID:</strong> {s.id}<br />
+              <div
+                key={i}
+                style={{
+                  marginBottom: "15px",
+                  borderBottom: "1px solid #444",
+                  paddingBottom: "10px",
+                  textAlign: "left",
+                }}
+              >
+                <strong>User:</strong> {s.username || "Unknown"}
+                <br />
+                <strong>Application ID:</strong> {s.id}
+                <br />
                 <strong>Answers:</strong>
                 <ul>
                   {Object.entries(s.answers).map(([qIndex, answer]) => (
@@ -141,7 +164,7 @@ const inputStyle = {
   borderRadius: "6px",
   border: "none",
   background: "#2e2e40",
-  color: "white"
+  color: "white",
 };
 
 const buttonPrimary = {
@@ -153,10 +176,10 @@ const buttonPrimary = {
   marginTop: "10px",
   background: "#4cafef",
   color: "white",
-  cursor: "pointer"
+  cursor: "pointer",
 };
 
 const buttonAccent = {
   ...buttonPrimary,
-  background: "#66bb6a"
+  background: "#66bb6a",
 };
