@@ -1,263 +1,139 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 
-export default function Builder() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [questions, setQuestions] = useState([]);
+export default function ApplyPage() {
+  const router = useRouter();
+  const { formId } = router.query;
 
-  // New question inputs
-  const [newQuestionText, setNewQuestionText] = useState("");
-  const [newQuestionType, setNewQuestionType] = useState("shortAnswer");
-  const [newQuestionRequired, setNewQuestionRequired] = useState(false);
-  const [newQuestionOptions, setNewQuestionOptions] = useState("");
-
-  const addQuestion = () => {
-    if (!newQuestionText.trim()) return alert("Question text is required");
-
-    let options = [];
-    if (newQuestionType === "multipleChoice") {
-      options = newQuestionOptions
-        .split(",")
-        .map((opt) => opt.trim())
-        .filter((opt) => opt.length > 0);
-      if (options.length === 0)
-        return alert("Please add options for multiple choice, separated by commas.");
-    }
-
-    const newQ = {
-      id: Date.now().toString(),
-      text: newQuestionText,
-      type: newQuestionType,
-      required: newQuestionRequired,
-      options,
-    };
-
-    setQuestions([...questions, newQ]);
-    setNewQuestionText("");
-    setNewQuestionType("shortAnswer");
-    setNewQuestionRequired(false);
-    setNewQuestionOptions("");
-  };
-
-  const createApplication = async () => {
-    const res = await fetch("/api/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, questions }),
-    });
-    const data = await res.json();
-    setAppLink(`${window.location.origin}/apply/${data.id}`);
-  };
-
-  const [appLink, setAppLink] = useState("");
-  const [showSubmissions, setShowSubmissions] = useState(false);
-  const [submissions, setSubmissions] = useState([]);
-
-  const fetchSubmissions = async () => {
-    const res = await fetch("/api/all");
-    const data = await res.json();
-    setSubmissions(data);
-  };
+  const [form, setForm] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    if (showSubmissions) fetchSubmissions();
-  }, [showSubmissions]);
+    if (!formId) return;
+
+    // Fetch the form details (replace with your real API)
+    fetch(`/api/forms/${formId}`)
+      .then((res) => res.json())
+      .then((data) => setForm(data))
+      .catch(() => alert("Failed to load form"));
+  }, [formId]);
+
+  if (!form) return <div>Loading form...</div>;
+
+  function handleChange(qId, value) {
+    setAnswers((prev) => ({ ...prev, [qId]: value }));
+    setErrors((prev) => ({ ...prev, [qId]: null }));
+  }
+
+  function validate() {
+    const newErrors = {};
+    form.questions.forEach((q) => {
+      if (q.required && !answers[q.id]?.trim()) {
+        newErrors[q.id] = "This question is required";
+      }
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setSubmitting(true);
+
+    // Submit answers to your API
+    try {
+      await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formId, answers }),
+      });
+      setSubmitted(true);
+    } catch (error) {
+      alert("Failed to submit. Try again later.");
+    }
+    setSubmitting(false);
+  }
+
+  if (submitted) {
+    return <h2>Thanks for applying!</h2>;
+  }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #2b5876, #4e4376)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Segoe UI, sans-serif",
-        color: "white",
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          width: "420px",
-          padding: 30,
-          borderRadius: 12,
-          background: "transparent",
-          boxShadow: "none",
-          textAlign: "center",
-        }}
-      >
-        <h1 style={{ marginBottom: "20px" }}>Create Mod Application</h1>
-        <input
-          placeholder="Application Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={inputStyle}
-        />
-        <textarea
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          style={{ ...inputStyle, height: "80px" }}
-        />
+    <form onSubmit={handleSubmit} style={{ maxWidth: 500, margin: "auto", padding: 20 }}>
+      <h1>{form.title}</h1>
+      <p>{form.description}</p>
 
-        <h3 style={{ marginTop: "20px", textAlign: "left" }}>Questions</h3>
-        <ul style={{ textAlign: "left" }}>
-          {questions.map((q, i) => (
-            <li key={q.id}>
-              {q.text} [{q.type}]
-              {q.required && " *"}
-              {q.type === "multipleChoice" && (
-                <ul>
-                  {q.options.map((opt, i) => (
-                    <li key={i}>{opt}</li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
-        </ul>
-
-        {/* Add question input and controls, minimal layout change */}
-        <input
-          placeholder="Add a question"
-          value={newQuestionText}
-          onChange={(e) => setNewQuestionText(e.target.value)}
-          style={inputStyle}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-          <select
-            value={newQuestionType}
-            onChange={(e) => setNewQuestionType(e.target.value)}
-            style={{
-              flex: 1,
-              marginRight: 10,
-              padding: "10px",
-              borderRadius: 6,
-              border: "none",
-              background: "#2e2e40",
-              color: "white",
-            }}
-          >
-            <option value="shortAnswer">Short Answer</option>
-            <option value="longAnswer">Long Answer</option>
-            <option value="multipleChoice">Multiple Choice</option>
-          </select>
-          <label style={{ flexShrink: 0, alignSelf: "center" }}>
-            <input
-              type="checkbox"
-              checked={newQuestionRequired}
-              onChange={(e) => setNewQuestionRequired(e.target.checked)}
-              style={{ marginRight: 5 }}
-            />
-            Required
+      {form.questions.map((q) => (
+        <div key={q.id} style={{ marginBottom: 20 }}>
+          <label style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+            {q.text} {q.required && "*"}
           </label>
-        </div>
 
-        {newQuestionType === "multipleChoice" && (
-          <input
-            placeholder="Options (comma separated)"
-            value={newQuestionOptions}
-            onChange={(e) => setNewQuestionOptions(e.target.value)}
-            style={inputStyle}
-          />
-        )}
-
-        <button style={buttonPrimary} onClick={addQuestion}>
-          Add Question
-        </button>
-        <button style={buttonAccent} onClick={createApplication}>
-          Create Application
-        </button>
-
-        {appLink && (
-          <div style={{ marginTop: "20px" }}>
-            <p>Share this link:</p>
-            <a href={appLink} style={{ color: "#76e6ff" }}>
-              {appLink}
-            </a>
-          </div>
-        )}
-
-        <button
-          style={{ ...buttonPrimary, marginTop: "20px", background: "#ff8a65" }}
-          onClick={() => setShowSubmissions(!showSubmissions)}
-        >
-          {showSubmissions ? "Close Submissions" : "View Submissions"}
-        </button>
-      </div>
-
-      {showSubmissions && (
-        <div
-          style={{
-            position: "fixed",
-            right: 0,
-            top: 0,
-            height: "100%",
-            width: "350px",
-            background: "#2c2c3c",
-            color: "white",
-            padding: "20px",
-            overflowY: "auto",
-            boxShadow: "-2px 0 5px rgba(0,0,0,0.5)",
-          }}
-        >
-          <h2>Submissions</h2>
-          {submissions.length === 0 ? (
-            <p>No submissions yet</p>
-          ) : (
-            submissions.map((s, i) => (
-              <div
-                key={i}
-                style={{
-                  marginBottom: "15px",
-                  borderBottom: "1px solid #444",
-                  paddingBottom: "10px",
-                  textAlign: "left",
-                }}
-              >
-                <strong>User:</strong> {s.username || "Unknown"}
-                <br />
-                <strong>Application ID:</strong> {s.id}
-                <br />
-                <strong>Answers:</strong>
-                <ul>
-                  {Object.entries(s.answers).map(([qIndex, answer]) => (
-                    <li key={qIndex}>{answer}</li>
-                  ))}
-                </ul>
-              </div>
-            ))
+          {q.type === "shortAnswer" && (
+            <input
+              type="text"
+              value={answers[q.id] || ""}
+              onChange={(e) => handleChange(q.id, e.target.value)}
+              style={inputStyle}
+            />
           )}
+
+          {q.type === "longAnswer" && (
+            <textarea
+              value={answers[q.id] || ""}
+              onChange={(e) => handleChange(q.id, e.target.value)}
+              style={{ ...inputStyle, height: 80 }}
+            />
+          )}
+
+          {q.type === "multipleChoice" && (
+            <div>
+              {q.options.map((opt) => (
+                <label key={opt} style={{ display: "block", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name={q.id}
+                    value={opt}
+                    checked={answers[q.id] === opt}
+                    onChange={() => handleChange(q.id, opt)}
+                    style={{ marginRight: 8 }}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          )}
+
+          {errors[q.id] && <div style={{ color: "red", marginTop: 5 }}>{errors[q.id]}</div>}
         </div>
-      )}
-    </div>
+      ))}
+
+      <button type="submit" disabled={submitting} style={buttonPrimary}>
+        {submitting ? "Submitting..." : "Submit"}
+      </button>
+    </form>
   );
 }
 
 const inputStyle = {
-  display: "block",
-  marginBottom: "10px",
   width: "100%",
-  padding: "10px",
-  borderRadius: "6px",
-  border: "none",
-  background: "#2e2e40",
-  color: "white",
+  padding: 10,
+  borderRadius: 6,
+  border: "1px solid #ccc",
+  fontSize: 16,
 };
 
 const buttonPrimary = {
-  display: "block",
-  width: "100%",
-  padding: "10px",
-  borderRadius: "6px",
+  padding: "10px 20px",
+  borderRadius: 6,
   border: "none",
-  marginTop: "10px",
   background: "#4cafef",
   color: "white",
   cursor: "pointer",
-};
-
-const buttonAccent = {
-  ...buttonPrimary,
-  background: "#66bb6a",
+  fontSize: 16,
 };
